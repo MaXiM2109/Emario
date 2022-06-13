@@ -1,3 +1,6 @@
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext('2d');
+
 class Subject {
     constructor(x = innerWidth / 2, y = innerHeight / 2, src = "") {
         this.x = x;
@@ -26,96 +29,120 @@ class Subject {
     randomY() {
         this.y = Math.random() * (innerHeight * 0.45 - innerHeight * 0.35) + innerHeight * 0.35;
     }
-}
-
-class NPC extends Subject {
-    constructor(speed = 5, health = 3, damage = 1) {
-        super();
-        this.speed = speed;
-        this.health = health;
-        this.damage = damage;
+    setDirection(direction){
+        this.direction = direction;
+    }
+    getDirection(){
+        return this.direction;
     }
 }
 
-let imgGuard = new Image();
-let xGuard = window.innerWidth - 250;
-let yGuard = innerHeight - 250;
-let attack = false;
-let speedGuard = 5;
-directionGuard = 0;
+class NPC extends Subject {
+    constructor(speed = 5, attack = false, direction = 0) {
+        super();
+        this.speed = speed;
+        this.attack = attack;
+        this.direction = direction;
+    }
+    setPhase(attack){
+        this.attack = attack;
+    }
+    getPhase(){
+        return this.attack;
+    }
+}
 
-let coin = new Subject(500, 500, "./pic/coin.png");
+class Player extends Subject{
+    constructor(speed = 5, direction = 0) {
+        super();
+        this.speed = speed;
+        this.direction = direction;
+    }
+}
+
+//ОБЪЕКТЫ
+
+let guard = new NPC(5, false, 0);
+let imgGuard = new Image();
+
+let coin = new Subject(0, 0, "./pic/coin.png");
+coin.setY(200);
 let imgCoin = new Image();
 imgCoin.src = coin.src;
 let score = 0;
 let time = 0;
 
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext('2d');
-
-let background = new Image();
+let background = new Image(500,500);
 background.src = "./pic/background.jpg";
 
-let player = new Image();
-let directionPlayer = 1;
-
+let player = new Player(10, 1);
+let isJump = true;
+let imgPlayer = new Image();
 let stepSound = new Audio("./sound/step.mp3")
 
-let xPlayer = 50,
-    yPlayer = innerHeight - 150;
-    speed = 10;
-isJump = true;
+//НАЧАЛЬНОЕ ПОЛОЖЕНИЕ
 
 function defaultPosition() {
     coin.randomX();
-    coin.setY(200);
+    player.setX(50);
+    player.setY(innerHeight - 150);
+    guard.setX(window.innerWidth - 250);
+    guard.setY(innerHeight - 250);
+    guard.setPhase(false);
+    guard.setDirection(0);
+    time = 0;
+    score = 0;
 }
 
 defaultPosition();
 
+//ОТРИСОВКА
+
 function draw() {
-    if (directionPlayer == 0) {
-        player.src = "./pic/playerLeft.png";
+    if (player.getDirection()) {
+        imgPlayer.src = "./pic/playerRight.png";
     } else {
-        player.src = "./pic/playerRight.png";
+        imgPlayer.src = "./pic/playerLeft.png";
     }
-    if (directionGuard == 0) {
-        imgGuard.src = "./pic/guardLeft.png";
-    } else {
+   if (guard.getDirection()) {
         imgGuard.src = "./pic/guardRight.png";
+    } else {
+        imgGuard.src = "./pic/guardLeft.png";
     }
     ctx.canvas.width = window.innerWidth;
     ctx.canvas.height = window.innerHeight;
     ctx.drawImage(background, 0, 0, innerWidth, innerHeight);
-    ctx.drawImage(player, xPlayer, yPlayer, player.width * 1.5, player.height / 3);
+    ctx.drawImage(imgPlayer, player.getX(), player.getY(), imgPlayer.width * 1.5, imgPlayer.height / 3);
     ctx.drawImage(imgCoin, coin.getX(), coin.getY(), imgCoin.width / 7, imgCoin.height / 10);
-    ctx.drawImage(imgGuard, xGuard, yGuard, imgGuard.width / 2, imgGuard.width / 2);
+    ctx.drawImage(imgGuard, guard.getX(), guard.getY(), imgGuard.width/2, imgGuard.height/2);
     ctx.font = "25px Arial";
     ctx.fillStyle = "#FFFFFF";
     ctx.fillText("Score: " + score, 8, 20);
 }
 
-imgCoin.onload = player.onload = imgGuard.onload = background.onload = draw;
+imgCoin.onload = imgPlayer.onload = imgGuard.onload = background.onload = draw;
+
+//ТАЙМЕР
 
 function timer() {
     time++;
 }
 setInterval(timer, 1000);
 
+//УСЛОВИЯ
 
 function getCoin() {
-    if (xPlayer - 100 <= coin.getX()-150) {
-        if (xPlayer + 100 >= coin.getX()-150) {
-            if (yPlayer - 100 <= coin.getY()) {
-                if (yPlayer + 100 >= coin.getY()) {
+    if (player.getX() - 100 <= coin.getX()-150) {
+        if (player.getX() + 100 >= coin.getX()-150) {
+            if (player.getY() - 100 <= coin.getY()) {
+                if (player.getY() + 100 >= coin.getY()) {
                     score++;
                     coin.setX = coin.randomX();
                     if (score > 0) {
-                        attack = true;
+                        guard.setPhase(true);
                     };
                     if (score == 5) {
                         alert("Вы потратили " + time + " секунд своей жизни, чтобы Максим собрал 5 шапок на Красной Площади");
-                        
                     };
                 }
             }
@@ -124,21 +151,13 @@ function getCoin() {
 }
 
 function gameOver() {
-    if (attack) {
-        if (xPlayer - 50 <= xGuard - 100) {
-            if (xPlayer + 50 >= xGuard - 100) {
-                if (yPlayer - 100 <= yGuard) {
-                    if (yPlayer + 100 >= yGuard) {
+    if (guard.getPhase()) {
+        if (player.getX() - 50 <= guard.getX() - 100) {
+            if (player.getX() + 50 >= guard.getX() - 100) {
+                if (player.getY() - 100 <= guard.getY()) {
+                    if (player.getY() + 100 >= guard.getY()) {
                         alert("Вас поймали за неадекватное поведение на Красной Площади, но Вы успели собрать " + score + " шапок");
-                        xPlayer = 50,
-                        yPlayer = innerHeight - 150;
-                        directionPlayer = 1;
-                        xGuard = window.innerWidth - 250;
-                        yGuard = innerHeight - 250;
-                        directionGuard = 0;
-                        attack = false;
-                        score = 0;
-                        time = 0;
+                        defaultPosition();
                     };
                 }
             }
@@ -146,12 +165,13 @@ function gameOver() {
     }
 }
 
-//Движение
+//ДВИЖЕНИЕ
+
 function jumpUp() {
     {
         setTimeout(function () {
-            if (yPlayer > window.innerHeight * 0.2) {
-                yPlayer -= 5;
+            if (player.getY() > window.innerHeight * 0.2) {
+                player.setY(player.getY() - 5);
             } else {
                 jumpDown();
                 return;
@@ -165,8 +185,8 @@ function jumpUp() {
 function jumpDown() {
     {
         setTimeout(function () {
-            if (yPlayer < window.innerHeight * 0.8) {
-                yPlayer += 5;
+            if (player.getY() < window.innerHeight * 0.8) {
+               player.setY(player.getY()+5);
             } else {
                 isJump = true;
                 draw();
@@ -179,17 +199,17 @@ function jumpDown() {
 }
 
 function moveGuard() {
-    if (attack) {
-        if (directionGuard) {
-            xGuard += speedGuard;
+    if (guard.getPhase()) {
+        if (guard.getDirection()) {
+            guard.setX(guard.getX() + guard.speed);
         } else {
-            xGuard -= speedGuard;
+            guard.setX(guard.getX() - guard.speed);
         };
-        if (xGuard > window.innerWidth - 230) {
-            directionGuard = 0;
+        if (guard.getX() > window.innerWidth - 230) {
+            guard.setDirection(0);
         }
-        if (xGuard < 0) {
-            directionGuard = 1;
+        if (guard.getX() < 0) {
+            guard.setDirection(1);
         };
     }
 }
@@ -197,24 +217,25 @@ setInterval(moveGuard, 1);
 setInterval(getCoin, 1);
 setInterval(gameOver, 1);
 
-//Управление
+//УПРАВЛЕНИЕ
+
 document.addEventListener("keydown", (event) => {
     let keyPressed = event.key;
     switch (keyPressed) {
         case "ArrowRight": {
-            if (xPlayer <= window.innerWidth - 230) {
-                xPlayer += speed;
+            if (player.getX() <= window.innerWidth - 230) {
+                player.setX(player.getX() + player.speed);
             };
             stepSound.play();
-            directionPlayer = 1;
+            player.setDirection(1);
             break;
         }
         case "ArrowLeft": {
-            if (xPlayer >= -150) {
-                xPlayer -= speed;
+            if (player.getX() >= -150) {
+                player.setX(player.getX() - player.speed);
             };
             stepSound.play();
-            directionPlayer = 0;
+            player.setDirection(0);
             break;
         }
         case 'ArrowUp': {
